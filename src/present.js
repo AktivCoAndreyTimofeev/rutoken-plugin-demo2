@@ -30,7 +30,6 @@ function testUi(useConsole) {
 
     $("#add-custom-extension").click($.proxy(this.newCustomExtension, this));
     $("#add-new-recipient").click($.proxy(this.newCmsEncryptRecipient, this));
-    $("#verify-add-signer").click($.proxy(this.newVerifySigner, this));
 
     $(".button").button();
     SyntaxHighlighter.highlight();
@@ -41,32 +40,27 @@ function testUi(useConsole) {
         }
     });
 
-    document.getElementById("cms-rsa-hash").onclick = function() {
-        document.getElementById("cms-hash-alg").disabled = !this.checked;
+    document.getElementById("add-system-info").onclick = function() {
+        document.getElementById("add-sign-time").disabled = this.checked;
+        if(this.checked) {
+            document.getElementById("add-sign-time").checked = true;
+        }
     }
 
-    document.getElementById("cms-encrypt-cipher").onclick = function() {
-        document.getElementById("cms-encrypt-alg").disabled = !this.checked;
+    var isWindows = navigator.userAgent.indexOf('Win') != -1;
+    if(!isWindows) {
+         document.getElementById("add-system-info").disabled = true;
     }
-
-    $(document).on('change', '.public-key-algorithm', function(e) {
-        if (this.options[e.target.selectedIndex].text != "RSA")
-            document.getElementById("rsa-keygen-size").disabled = true;
-        else
-            document.getElementById("rsa-keygen-size").disabled = false;
-    });
 }
 
 function uiControls() {
     this.deviceList = $("#device-list");
     this.keyList = $("#key-list");
     this.certificateList = $("#cert-list");
-    this.systemStoreCertificateList = $("#system-store-cert-list");
 
     this.refreshDeviceListButton = $("#refresh-dev");
     this.refreshKeyListButton = $("#refresh-keys");
     this.refreshCertificateListButton = $("#refresh-certs");
-    this.refreshSystemStoreCertificateListButton = $("#refresh-system-store-certs");
 
     this.loginButton = $("#login");
     this.logoutButton = $("#logout");
@@ -81,12 +75,10 @@ uiControls.prototype = {
     deviceList: null,
     keyList: null,
     certificateList: null,
-    systemStoreCertificateList: null,
 
     refreshDeviceListButton: null,
     refreshKeyListButton: null,
     refreshCertificateListButton: null,
-    refreshSystemStoreCertificateListButton: null,
     loginButton: null,
     logoutButton: null,
     savePinButton: null,
@@ -131,26 +123,10 @@ testUi.prototype = {
         return this.controls.certificateList.val();
     },
 
-    systemStoreCertificate: function () {
-        if (this.controls.systemStoreCertificateList.val() == null) throw "Сертификат не выбран";
-        return this.controls.systemStoreCertificateList.val();
-    },
-
-    addDevice: function (deviceId, label, selected) {
-        selected = (selected === undefined) ? false : selected;
+    addDevice: function (deviceId, label) {
         ui.controls.deviceList.append($("<option>", {
-            'value': deviceId,
-            'selected': selected,
+            'value': deviceId
         }).text(label));
-    },
-
-    removeDevice: function (deviceId) {
-        this.controls.deviceList.find("option[value='" + deviceId + "']").remove();
-        if (!this.controls.deviceList.has('option').length) this.controls.deviceList.append($("<option>").text("Нет доступных устройств"));
-    },
-
-    removeInfoInDeviceList: function () {
-        this.controls.deviceList.find('option:not([value])').remove();
     },
 
     clearDeviceList: function (message) {
@@ -215,20 +191,9 @@ testUi.prototype = {
         }).text(noSubject ? certificate.serialNumber : description));
     },
 
-    addSystemStoreCertificate: function (certificate) {
-        this.controls.systemStoreCertificateList.append($("<option>", {
-            'value': certificate,
-            'title': "Store certificate"}).text(certificate));
-    },
-
     clearCertificateList: function (message) {
         this.controls.certificateList.empty();
         if (message) this.controls.certificateList.append($("<option>").text(message));
-    },
-
-    clearSystemStoreCertificateList: function (message) {
-        this.controls.systemStoreCertificateList.empty();
-        if (message) this.controls.systemStoreCertificateList.append($("<option>").text(message));
     },
 
     getContent: function (container, index) {
@@ -255,18 +220,18 @@ testUi.prototype = {
             return plugin.TOKEN_INFO_DEVICE_TYPE;
         case "serial":
             return plugin.TOKEN_INFO_SERIAL;
+        case "pin cache":
+            return plugin.TOKEN_INFO_IS_PIN_CACHED;
         case "logged":
             return plugin.TOKEN_INFO_IS_LOGGED_IN;
         case "formats":
             return plugin.TOKEN_INFO_FORMATS;
+        case "algorithms":
+            return plugin.TOKEN_INFO_ALGORITHMS;
         case "features":
             return plugin.TOKEN_INFO_FEATURES;
-        case "mechanisms":
-            return plugin.TOKEN_INFO_SUPPORTED_MECHANISMS;
-        case "speed":
-            return plugin.TOKEN_INFO_SPEED;
-        case "pins":
-            return plugin.TOKEN_INFO_PINS_INFO;
+        case "pin retries left":
+            return plugin.TOKEN_INFO_PIN_RETRIES_LEFT;
         }
     },
 
@@ -287,14 +252,6 @@ testUi.prototype = {
             return plugin.CERT_CATEGORY_CA;
         case "other":
             return plugin.CERT_CATEGORY_OTHER;
-        }
-    },
-
-    certificateInfoType: function () {
-        var value = $(".radio-input:radio[name=certificate-info]:checked").val();
-        switch (value) {
-        case "serial number":
-            return plugin.CERT_INFO_SERIAL_NUMBER;
         }
     },
 
@@ -335,15 +292,6 @@ testUi.prototype = {
             } catch (error) {
                 this.writeln(error.toString());
                 this.clearCertificateList(error.toString());
-            }
-        }, this));
-
-        this.controls.refreshSystemStoreCertificateListButton.click($.proxy(function () {
-            try {
-                plugin.enumerateStoreCertificates();
-            } catch (error) {
-                this.writeln(error.toString());
-                this.clearSystemStoreCertificateList(error.toString());
             }
         }, this));
 
@@ -533,34 +481,6 @@ testUi.prototype = {
         r.onloadend = function (event) {
             callback($.base64.encode(event.target.result));
         };
-    },
-
-    newVerifySigner: function() {
-        var table = document.getElementById("Certificates");
-
-        var row = table.insertRow(table.rows.length - 1);
-        var cell = row.insertCell(0);
-        cell.colSpan = 2;
-        cell.innerHTML = "<hr>";
-
-        row = table.insertRow(table.rows.length - 1);
-        cell = row.insertCell(0);
-        cell.innerHTML = '<label for="cert">Cертификат</label>\
-            <textarea id="cert" class="verify-signer"></textarea>'
-
-        cell = row.insertCell(1);
-        cell.innerHTML = '<img src="images/close.png" alt="x" width=24 height=24/>';
-        cell.onclick = this.deleteVerifySigner;
-    },
-
-    deleteVerifySigner: function() {
-        const numberOfRowsToDelete = 2;
-        var table = document.getElementById("Certificates");
-        var row = $(this).closest("tr");
-        var rIndex = row[0].rowIndex;
-
-        for(var i = 0; i < numberOfRowsToDelete; i++)
-            table.deleteRow(rIndex-1);
     },
 
     newCmsEncryptRecipient: function() {
@@ -763,7 +683,6 @@ function cryptoPlugin(pluginObject, noAutoRefresh) {
     this.errorDescription[this.errorCodes.X509_CRL_PATH_VALIDATION_ERROR] = "Неправильный путь CRL";
     this.errorDescription[this.errorCodes.CMS_CERTIFICATE_ALREADY_PRESENT] = "Сертификат уже используется";
     this.errorDescription[this.errorCodes.CANT_HARDWARE_VERIFY_CMS] = "Проверка множественной подписи с вычислением хеша на устройстве не поддерживается";
-    this.errorDescription[this.errorCodes.DECRYPT_UNSUCCESSFUL] = "Расшифрование не удалось"
 
     if (this.autoRefresh) this.enumerateDevices();
 }
@@ -782,87 +701,30 @@ cryptoPlugin.prototype = {
         }, 0);
     },
 
-    enumerateDevices: function (update) {
-        if (update) {
-            var options = {"mode": this.ENUMERATE_DEVICES_EVENTS};
+    enumerateDevices: function () {
+        ui.clearDeviceList("Список устройств обновляется...");
+        this.pluginObject.enumerateDevices($.proxy(function (devices) {
+            if (devices.length == 0) {
+                ui.clearDeviceList("Нет доступных устройств");
+                ui.clearCertificateList("Нет доступных устройств");
+                ui.clearKeyList("Нет доступных устройств");
+                return;
+            }
+            //            ui.clearKeyList("Выполните вход на устройство");
+            ui.clearDeviceList();
+            if (this.autoRefresh) this.enumerateKeys(devices[0]);
+            if (this.autoRefresh) this.enumerateCertificates(devices[0]);
+            else ui.clearCertificateList("Обновите список сертификатов");
 
-            this.pluginObject.enumerateDevices(options, $.proxy(function (devices) {
-                for (key in devices) {
-                    switch (key) {
-                        case "connected":
-                            for(var d in devices[key]) {
-                                var dev = devices[key][d];
-                                // To handle fast device reconnect first try to remove it.
-                                ui.removeDevice(dev);
-
-                                this.pluginObject.getDeviceInfo(dev, plugin.TOKEN_INFO_LABEL, $.proxy(function (device) {
-                                    return function (label) {
-                                        if (label == "Rutoken ECP <no label>") label = "Rutoken ECP #" + device.toString();
-                                        ui.removeInfoInDeviceList();
-                                        ui.addDevice(device, label, false);
-
-                                        if (ui.device() == device) {
-                                            if (this.autoRefresh) this.enumerateKeys(device);
-                                            if (this.autoRefresh) this.enumerateCertificates(device);
-                                            else ui.clearCertificateList("Обновите список сертификатов");
-                                        }
-                                    };
-                                }(dev), this), $.proxy(ui.printError, ui));
-                            }
-                            break;
-                        case "disconnected":
-                            for (var d in devices[key]) {
-                                var selectedDevice = ui.device(),
-                                    device = devices[key][d];
-
-                                ui.removeDevice(device);
-
-                                if (device == selectedDevice) {
-                                    try {
-                                        var dev = ui.device();
-
-                                        if (this.autoRefresh) this.enumerateKeys(ui.device());
-                                        if (this.autoRefresh) this.enumerateCertificates(ui.device());
-                                        else ui.clearCertificateList("Обновите список сертификатов");
-                                    } catch (e) {
-                                        ui.clearDeviceList("Нет доступных устройств");
-                                        ui.clearCertificateList("Нет доступных устройств");
-                                        ui.clearKeyList("Нет доступных устройств");
-                                    }
-                                }
-                            }
-                            break;
-                    }
-                }
-            }, this), $.proxy(ui.printError, ui));
-        } else {
-            ui.clearDeviceList("Список устройств обновляется...");
-
-            var options = {"mode": this.ENUMERATE_DEVICES_LIST};
-
-            this.pluginObject.enumerateDevices(options, $.proxy(function (devices) {
-                if (Object.keys(devices).length == 0) {
-                    ui.clearDeviceList("Нет доступных устройств");
-                    ui.clearCertificateList("Нет доступных устройств");
-                    ui.clearKeyList("Нет доступных устройств");
-                    return;
-                }
-                //            ui.clearKeyList("Выполните вход на устройство");
-                ui.clearDeviceList();
-                if (this.autoRefresh) this.enumerateKeys(devices[0]);
-                if (this.autoRefresh) this.enumerateCertificates(devices[0]);
-                else ui.clearCertificateList("Обновите список сертификатов");
-
-                for (var d in devices) {
-                    this.pluginObject.getDeviceInfo(devices[d], plugin.TOKEN_INFO_LABEL, $.proxy(function (device) {
-                        return function (label) {
-                            if (label == "Rutoken ECP <no label>") label = "Rutoken ECP #" + device.toString();
-                            ui.addDevice(device, label, false);
-                        };
-                    }(devices[d]), this), $.proxy(ui.printError, ui));
-                }
-            }, this), $.proxy(ui.printError, ui));
-        }
+            for (var d in devices) {
+                this.pluginObject.getDeviceInfo(devices[d], plugin.TOKEN_INFO_LABEL, $.proxy(function (device) {
+                    return function (label) {
+                        if (label == "Rutoken ECP <no label>") label = "Rutoken ECP #" + device.toString();
+                        ui.addDevice(device, label);
+                    };
+                }(devices[d]), this), $.proxy(ui.printError, ui));
+            }
+        }, this), $.proxy(ui.printError, ui));
     },
 
     enumerateKeys: function (deviceId, marker) {
@@ -923,47 +785,12 @@ cryptoPlugin.prototype = {
                         this.pluginObject.enumerateCertificates(device, this.CERT_CATEGORY_UNSPEC, $.proxy(function (certificates) {
                             $.proxy(addCertificates, this)(certificates, this.CERT_CATEGORY_UNSPEC);
 
-                            try {
-                                var certificate = ui.certificate();
-                            } catch (e) {
-                                ui.clearCertificateList("На устройстве отсутствуют сертификаты");
-                            }
                         }, this), onError);
                     }, this), onError);
                 }, this), onError);
             }, this), onError);
         } catch (e) {
             // ui now throws an exception if there is no devices avalable
-            console.log(e);
-        }
-    },
-
-    enumerateStoreCertificates: function () {
-        function onError(errorCode) {
-            $.proxy(ui.printError, ui)(errorCode);
-              ui.clearSystemStoreCertificateList("Произошла ошибка");
-        }
-
-        function addSystemStoreCertificates(certificates) {
-            for (var c in certificates) {
-                ui.addSystemStoreCertificate(certificates[c]);
-            }
-        }
-
-        ui.clearSystemStoreCertificateList("Список сертификатов обновляется...");
-        try {
-            var options = {};
-            this.pluginObject.enumerateStoreCertificates(options, $.proxy(function (certificates) {
-                ui.clearSystemStoreCertificateList();
-                $.proxy(addSystemStoreCertificates, this)(certificates);
-
-                try {
-                    var systemStoreCertificate = ui.systemStoreCertificate();
-                } catch (e) {
-                    ui.clearSystemStoreCertificateList("В хранилище отсутствуют сертификаты");
-                }
-            }, this), onError);
-        } catch (e) {
             console.log(e);
         }
     },
@@ -1069,55 +896,20 @@ var TestSuite = new(function () {
                     }).join(", ") + "]";
                 }
 
+                if (info == plugin.TOKEN_INFO_ALGORITHMS) {
+                    var m = {};
+                    m[plugin.PUBLIC_KEY_ALGORITHM_GOST3410_2001] = "KEY_ALGORITHM_GOST3410_2001";
+                    m[plugin.PUBLIC_KEY_ALGORITHM_GOST3410_2012_256] = "KEY_ALGORITHM_GOST3410_2012_256";
+                    m[plugin.PUBLIC_KEY_ALGORITHM_GOST3410_2012_512] = "KEY_ALGORITHM_GOST3410_2012_512";
+                    m[plugin.PUBLIC_KEY_ALGORITHM_RSA] = "KEY_ALGORITHM_RSA";
+
+                    message = "[" + result.map(function (value) {
+                        return m[value];
+                    }).join(", ") + "]";
+                }
+
                 if (info == plugin.TOKEN_INFO_FEATURES) {
                     message = JSON.stringify(result);
-                }
-
-                if (info == plugin.TOKEN_INFO_PINS_INFO) {
-                    message = JSON.stringify(result);
-                }
-
-                if (info == plugin.TOKEN_INFO_SUPPORTED_MECHANISMS) {
-                    var hashes = {};
-                    hashes[plugin.HASH_TYPE_GOST3411_94] = "HASH_TYPE_GOST3411_94";
-                    hashes[plugin.HASH_TYPE_GOST3411_12_256] = "HASH_TYPE_GOST3411_12_256";
-                    hashes[plugin.HASH_TYPE_GOST3411_12_512] = "HASH_TYPE_GOST3411_12_512";
-                    hashes[plugin.HASH_TYPE_MD5] = "HASH_TYPE_MD5";
-                    hashes[plugin.HASH_TYPE_SHA1] = "HASH_TYPE_SHA1";
-                    hashes[plugin.HASH_TYPE_SHA256] = "HASH_TYPE_SHA256";
-                    hashes[plugin.HASH_TYPE_SHA512] = "HASH_TYPE_SHA512";
-
-                    var signs = {};
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_GOST3410_2001] = "PUBLIC_KEY_ALGORITHM_GOST3410_2001";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_GOST3410_2012_256] = "PUBLIC_KEY_ALGORITHM_GOST3410_2012_256";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_GOST3410_2012_512] = "PUBLIC_KEY_ALGORITHM_GOST3410_2012_512";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_RSA_512] = "PUBLIC_KEY_ALGORITHM_RSA_512";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_RSA_768] = "PUBLIC_KEY_ALGORITHM_RSA_768";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_RSA_1024] = "PUBLIC_KEY_ALGORITHM_RSA_1024";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_RSA_1280] = "PUBLIC_KEY_ALGORITHM_RSA_1280";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_RSA_1536] = "PUBLIC_KEY_ALGORITHM_RSA_1536";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_RSA_1792] = "PUBLIC_KEY_ALGORITHM_RSA_1792";
-                    signs[plugin.PUBLIC_KEY_ALGORITHM_RSA_2048] = "PUBLIC_KEY_ALGORITHM_RSA_2048";
-
-                    var ciphers = {};
-                    ciphers[plugin.CIPHER_ALGORITHM_DES] = "CIPHER_ALGORITHM_DES";
-                    ciphers[plugin.CIPHER_ALGORITHM_3DES] = "CIPHER_ALGORITHM_3DES";
-                    ciphers[plugin.CIPHER_ALGORITHM_AES128] = "CIPHER_ALGORITHM_AES128";
-                    ciphers[plugin.CIPHER_ALGORITHM_AES192] = "CIPHER_ALGORITHM_AES192";
-                    ciphers[plugin.CIPHER_ALGORITHM_AES256] = "CIPHER_ALGORITHM_AES256";
-                    ciphers[plugin.CIPHER_ALGORITHM_GOST28147] = "CIPHER_ALGORITHM_GOST28147";
-
-                    message = "hashes:\n";
-                    message += "&middot hardware: [" + result["hash"]["hardware"].map(function (value) { return hashes[value]; }).join(", ") + "]\n";
-                    message += "&middot software: [" + result["hash"]["software"].map(function (value) { return hashes[value]; }).join(", ") + "]\n";
-
-                    message += "signs:\n";
-                    message += "&middot hardware: [" + result["sign"]["hardware"].map(function (value) { return signs[value]; }).join(", ") + "]\n";
-                    message += "&middot software: [" + result["sign"]["software"].map(function (value) { return signs[value]; }).join(", ") + "]\n";
-
-                    message += "ciphers:\n";
-                    message += "&middot hardware: [" + result["cipher"]["hardware"].map(function (value) { return ciphers[value]; }).join(", ") + "]\n";
-                    message += "&middot software: [" + result["cipher"]["software"].map(function (value) { return ciphers[value]; }).join(", ") + "]\n";
                 }
 
                 message += " (" + info + ")";
@@ -1130,12 +922,11 @@ var TestSuite = new(function () {
     this.ChangePin = new(function () {
         Test.call(this);
         this.description = function () {
-            return "Смена PIN-кода пользователя";
+            return "Смена ПИНа пользователя";
         };
         this.runTest = function () {
             var options = {};
-            if (ui.checkboxState(this.container, "use-admin-pin") == "on") options.useAdminPin = true;
-            plugin.changePin(ui.device(), ui.getContent(this.container, 1),  ui.getContent(this.container, 2), options, $.proxy(function () {
+            plugin.changePin(ui.device(), ui.getContent(this.container, 0),  ui.getContent(this.container, 1), options, $.proxy(function () {
                 $.proxy(ui.printResult, ui)();
             }, this), $.proxy(ui.printError, ui));
         }
@@ -1144,23 +935,11 @@ var TestSuite = new(function () {
     this.ChangePin2 = new(function () {
         Test.call(this);
         this.description = function () {
-            return "Смена PIN2";
+            return "Смена ПИН2";
         };
         this.runTest = function () {
             var options = {};
             plugin.pluginObject.changePin(ui.device(), null,  null, options, $.proxy(function () {
-                $.proxy(ui.printResult, ui)();
-            }, this), $.proxy(ui.printError, ui));
-        }
-    })();
-
-    this.UnblockUserPin = new(function () {
-        Test.call(this);
-        this.description = function () {
-            return "Разблокировка PIN-кода пользователя";
-        };
-        this.runTest = function () {
-            plugin.unblockUserPin(ui.device(), ui.getContent(this.container, 0), $.proxy(function () {
                 $.proxy(ui.printResult, ui)();
             }, this), $.proxy(ui.printError, ui));
         }
@@ -1212,8 +991,7 @@ var TestSuite = new(function () {
                 options.paramset = "A";
                 options.signatureSize = 1024;
             } else if (algorithm === plugin.PUBLIC_KEY_ALGORITHM_RSA) {
-                let rsaSize = parseInt(this.container.find(".rsa-keygen-size").val(), 10);
-                options.signatureSize = rsaSize;
+                options.signatureSize = 2048;
             }
 
             plugin.generateKeyPair(ui.device(), undefined, marker, options, $.proxy(function () {
@@ -1419,19 +1197,6 @@ var TestSuite = new(function () {
         };
     })();
 
-    this.GetCertificateInfo = new(function () {
-        Test.call(this);
-        this.description = function () {
-            return "Получение информации о сертификате";
-        };
-        this.runTest = function () {
-            var infoType = ui.certificateInfoType();
-            plugin.getCertificateInfo(ui.device(), ui.certificate(), infoType, $.proxy(function (result) {
-                $.proxy(ui.printResult, ui)(result);
-            }, this), $.proxy(ui.printError, ui));
-        };
-    })();
-
     this.SignMessage = new(function () {
         Test.call(this);
         this.description = function () {
@@ -1440,15 +1205,14 @@ var TestSuite = new(function () {
 
         this.runTest = function () {
             var options = {};
-
+            
             ui.setContent(this.container, "");
             options.addSignTime = ui.checkboxState(this.container, "add-sign-time") == "on" ? true : false;
             options.useHardwareHash = ui.checkboxState(this.container, "use-hw-hash") == "on" ? true : false;
             options.detached = ui.checkboxState(this.container, "detached-sign") == "on" ? true : false;
             options.addUserCertificate = ui.checkboxState(this.container, "add-user-cert") == "on" ? true : false;
+            options.addSystemInfo = ui.checkboxState(this.container, "add-system-info") == "on" ? true : false;
             options.CMS = ui.getContent(this.container, 1);
-            if (ui.checkboxState(this.container, "rsa-hash") == "on")
-                options.rsaHashAlgorithm = plugin[this.container.find(".hash-alg").val()];
 
             var dataFormat = plugin[this.container.find(".data-format").val()];
 
@@ -1456,8 +1220,8 @@ var TestSuite = new(function () {
                 console.time("sign");
                 console.log("HW", options.useHardwareHash);
                 console.log("detached: ", options.detached);
-                console.log("dataFormat: ", dataFormat);
-            }
+                console.log("system-info: ", options.addSystemInfo);
+                console.log("dataFormat: ", dataFormat);            }
             plugin.sign(ui.device(), ui.certificate(), ui.getContent(this.container), dataFormat, options, $.proxy(function (res) {
                 if (ui.useConsole) {
                     console.timeEnd("sign");
@@ -1707,13 +1471,13 @@ var TestSuite = new(function () {
             options.base64 = ui.checkboxState(this.container, "in-base64") == "on" ? true : false;
             options.data = ui.getContent(this.container, 1);
 
-            var elements = this.container.find(".verify-signer");
-            options.certificates = [];
-            for (var i = 0; i < elements.length; i++)
-                if (elements[i].value != "")
-                    options.certificates.push(elements[i].value);
+            var cert = ui.getContent(this.container, 2);
+            if (cert != "") {
+                options.certificates = new Array();
+                options.certificates.push(cert);
+            }
 
-            var caCert = ui.getContent(this.container, 2);
+            var caCert = ui.getContent(this.container, 3);
             if (caCert != "") {
                 options.CA = new Array();
                 options.CA.push(caCert);
@@ -1741,14 +1505,10 @@ var TestSuite = new(function () {
                 base64: b64
             };
 
-            if (ui.checkboxState(this.container, "cms-encrypt-cipher") == "on")
-                options.cipherAlgorithm = plugin[this.container.find(".cms-encrypt-alg").val()]
-
             var elements = this.container.find(".recipient");
             var recipients = [];
             for (var i = 0; i < elements.length; i++)
-                if (elements[i].value != "")
-                    recipients.push(elements[i].value);
+                recipients.push(elements[i].value);
 
             plugin.cmsEncrypt(ui.device(), "", recipients, ui.getContent(this.container, 0),
                 options, $.proxy(function (res) {
@@ -1806,21 +1566,6 @@ var TestSuite = new(function () {
         }
     })();
 
-    this.GetStoreCertificate = new (function () {
-        Test.call(this);
-        this.description = function () {
-            return "Получение тела выбранного сертификата из системного хранилища в PEM";
-        }
-        this.runTest = function () {
-            var options = {};
-
-            plugin.getStoreCertificate(ui.systemStoreCertificate(), options, $.proxy(function (res) {
-                ui.setContent(this.container, res);
-                $.proxy(ui.printResult, ui)(res);
-            }, this), $.proxy(ui.printError, ui))
-        }
-    })();
-
     this.ParseCertificateFromString = new(function () {
         Test.call(this);
         this.description = function () {
@@ -1842,11 +1587,6 @@ function onPluginLoaded(pluginObject) {
 
         plugin = new cryptoPlugin(pluginObject, noAutoRefresh);
         ui.registerEvents();
-
-        window.setInterval(function() {
-            if (document.visibilityState == "visible") {
-                plugin.enumerateDevices(true);
-            }}, 500);
     } catch (error) {
         ui.writeln(error);
     }
@@ -1870,16 +1610,19 @@ window.onload = function () {
         initUi();
         var isChrome = !!window.chrome;
         var isFirefox = typeof InstallTrigger !== 'undefined';
-        var verOffset, fullVersion, majorVersion;
+        var isWindows = navigator.userAgent.indexOf('Win') != -1;
+        var verOffset, fullVersion, majorVerison;
         var performCheck = true;
         if ((verOffset = navigator.userAgent.indexOf('Firefox')) != -1) {
             fullVersion = navigator.userAgent.substring(verOffset + 8);
             majorVersion = parseInt(''+fullVersion,10);
-            if (majorVersion < 53) { // Don't check on ESR and older ones
+            console.log(majorVersion);
+            if (!isWindows && majorVersion >= 53)
+                throw "Firefox 53+ не поддерживается плагином на mac/linux";
+            if (majorVersion < 50)
                 performCheck = false;
-            }
         }
-        if (performCheck && (isChrome || isFirefox)) {
+        if (performCheck && (isChrome || isFirefox) && isWindows) {//for firefox 50+ only
             return rutoken.isExtensionInstalled();
         } else {
             return Promise.resolve(true);
