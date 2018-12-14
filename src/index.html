@@ -29,7 +29,7 @@
                         <ul>
                             <li><a href="http://www.rutoken.ru/products/all/rutoken-plugin/" target="_blank">Рутокен Плагин</a></li>
                             <li><a href="http://www.rutoken.ru/support/download/rutoken-plugin/" target="_blank">Загрузить</a></li>
-                            <li><a href="http://dev.rutoken.ru/pages/viewpage.action?pageId=3801104" target="_blank">Документация</a></li>
+                            <li><a href="https://dev.rutoken.ru/display/PUB/RutokenPluginDoc" target="_blank">Документация</a></li>
                             <li><a href="http://forum.rutoken.ru/forum/15/" target="_blank">Форум</a></li>
                         </ul>
                     </dd>
@@ -90,37 +90,48 @@
                                     <label><input class="radio-input" type="radio" name="device-info" value="label"/>Метка</label><br>
                                     <label><input class="radio-input" type="radio" name="device-info" value="type"/>Тип устройства</label><br>
                                     <label><input class="radio-input" type="radio" name="device-info" value="serial"/>Серийный номер</label><br>
-                                    <label><input class="radio-input" type="radio" name="device-info" value="pin cache"/>PIN закэширован</label><br>
                                     <label><input class="radio-input" type="radio" name="device-info" value="logged"/>Авторизация</label><br>
                                     <label><input class="radio-input" type="radio" name="device-info" value="formats"/>Поддерживаемые форматы</label><br>
-                                    <label><input class="radio-input" type="radio" name="device-info" value="algorithms" />Поддерживаемые алгоритмы</label><br>
                                     <label><input class="radio-input" type="radio" name="device-info" value="features"/>Возможности устройства</label><br>
-                                    <label><input class="radio-input" type="radio" name="device-info" value="pin retries left"/>Оставшееся количество попыток ввода PIN</label>
+                                    <label><input class="radio-input" type="radio" name="device-info" value="mechanisms"/>Поддерживаемые механизмы</label><br>
+                                    <label><input class="radio-input" type="radio" name="device-info" value="speed" />Класс скорости</label><br>
+                                    <label><input class="radio-input" type="radio" name="device-info" value="pins"/>Информация о PIN-кодах</label><br>
                                 </li>
                             </ul>
                         </div>
                         <div id="ChangePin" class="group">
                             <ul>
                                 <li>
-                                    <label for="old-pin">Старый ПИН:</label>
+                                    <label><input type="checkbox" name="use-admin-pin" class="input" />Использовать PIN-код Администратора</label>
+                                </li>
+                                <li>
+                                    <label for="old-pin">Старый PIN-код пользователя или PIN-код Администратора:</label>
                                       <input type="text" class="input" id="old-pin" value="12345678" />
                                 </li>
                                 <li>
-                                    <label for=new-pin>Новый ПИН:</label>
+                                    <label for=new-pin>Новый PIN-код:</label>
                                     <input type="text" class="input" id="new-pin" value="123456" />
                                 </li>
                             </ul>
                         </div>
                         <div id="ChangePin2" class="group">
                         </div>
+                        <div id="UnblockUserPin" class="group">
+                            <ul>
+                                <li>
+                                    <label for=admin-pin>PIN-код Администратора:</label>
+                                    <input type="text" id="admin-pin" class="input"/>
+                                </li>
+                            </ul>
+                        </div>
                         <div id="FormatToken" class="group">
                             <ul>
                                 <li>
-                                    <label for=admin-pin>ПИН администратора:</label>
+                                    <label for=admin-pin>PIN-код Администратора:</label>
                                     <input type="text" id="admin-pin" class="input"/>
                                 </li>
                                 <li>
-                                    <label for=new-user-pin>Новый ПИН пользователя:</label>
+                                    <label for=new-user-pin>Новый PIN-код пользователя:</label>
                                     <input type="text" id="new-user-pin" class="input"/>
                                 </li>
                                 <li>
@@ -151,6 +162,19 @@
                                         <option value="PUBLIC_KEY_ALGORITHM_GOST3410_2012_256">ГОСТ Р 34.10-2012 256</option>
                                         <option value="PUBLIC_KEY_ALGORITHM_GOST3410_2012_512">ГОСТ Р 34.10-2012 512</option>
                                         <option value="PUBLIC_KEY_ALGORITHM_RSA">RSA</option>
+                                    </select>
+                                </li>
+                                <li>
+                                    <label for="rsa-keygen-size">Размер RSA ключа:</label>
+                                    <select id="rsa-keygen-size" class="rsa-keygen-size" disabled=true>
+                                        <option value="512">512</option>
+                                        <option value="768">768</option>
+                                        <option value="1024">1024</option>
+                                        <option value="1280">1280</option>
+                                        <option value="1536">1536</option>
+                                        <option value="1792">1792</option>
+                                        <option value="2048" selected>2048</option>
+                                        <option value="4096">4096</option>
                                     </select>
                                 </li>
                             </ul>
@@ -270,7 +294,7 @@
                                         </tr>
                                         <tr>
                                             <th><label>commonName</label></th>
-                                            <td><input type="text" id="commonName" value="Фамилия Имя Очество" class="subject-input"/></td>
+                                            <td><input type="text" id="commonName" value="Фамилия Имя Отчество" class="subject-input"/></td>
                                             <th><label>pseudonym</label></th>
                                             <td><input type="text" id="pseudonym" value="pseudonym" class="subject-input"/></td>
                                         </tr>
@@ -396,15 +420,42 @@
                             </ul>
                         </div>
                         <div id="ParseCertificateFromString" class="group">
-                        <ul>
-                            <li>
-                            <label for="parse-cert-string-body">Cертификат в формате PEM:</label>
-                            <textarea id="parse-cert-string-body" class="text-input" rows="7">-----BEGIN CERTIFICATE-----&#10;MIIE9DCCBKOgAwIBAgIKGeFWzQACAAJYxzAIBgYqhQMCAgMwZTEgMB4GCSqGSIb3&#10;DQEJARYRaW5mb0BjcnlwdG9wcm8ucnUxCzAJBgNVBAYTAlJVMRMwEQYDVQQKEwpD&#10;UllQVE8tUFJPMR8wHQYDVQQDExZUZXN0IENlbnRlciBDUllQVE8tUFJPMB4XDTEy&#10;MDgxNjEyNDgxMFoXDTE0MTAwNDA3MDk0MVowggGKMQswCQYDVQQGEwJSVTEPMA0G&#10;A1UECBMGbW9zY293MREwDwYDVQQHEwhsb2NhbGl0eTEPMA0GA1UECRMGc3RyZWV0&#10;MQ4wDAYDVQQKEwVBa3RpdjELMAkGA1UECxMCSVQxGzAZBgNVBAweEgQ0BD4EOwQ2&#10;BD0EPgRBBEIETDEZMBcGCCqFAwOBAwEBEgsxMjM0MjM1MzQ1MjEWMBQGBSqFA2QD&#10;EgsxMjM0MjM1MzQ1MjEWMBQGBSqFA2QBEgsxMjM0MjM1MzQ1MjEWMBQGBSqFA2QF&#10;EgsxMjM0MjM1MzQ1MjEvMC0GA1UEAx4mBCQEMAQ8BDgEOwQ4BE8AIAQYBDwETwAg&#10;BB4ERwQ1BEEEQgQyBD4xFzAVBgNVBBATDnBvc3RhbCBhZGRyZXNzMRQwEgYDVQRB&#10;Ewtwc2V1ZG9ueW11czEQMA4GA1UEBBMHc3VybmFtZTETMBEGA1UEKhMKZ2l2ZW4g&#10;bmFtZTEiMCAGCSqGSIb3DQEJARYTZXhhbXBsZUBleGFtcGxlLmNvbTBjMBwGBiqF&#10;AwICEzASBgcqhQMCAiMBBgcqhQMCAh4BA0MABEC8dyMzXuEbYHV9NwCWZQmoWmon&#10;xJAfFTMtoKfuWWwhNg3ZuL36UP/zjTd33HolBNkRIC0FgtxpfQ+ES3l3J7PVo4IC&#10;CjCCAgYwDAYDVR0PBAUDAwf3gDB1BgNVHSUBAf8EazBpBggrBgEFBQcDBAYIKwYB&#10;BQUHAwIGCCsGAQUFBwMBBggrBgEFBQcDAwYIKwYBBQUHAwgGCisGAQQBgjcCARUG&#10;CisGAQQBgjcCARYGCisGAQQBgjcKAwEGCCsGAQUFBwMJBgcqhQMCAiIGMEUGA1Ud&#10;IAQ+MDwwCAYGKoUDZHEBMAgGBiqFA2RxAjAIBgYqhQNkcQMwCAYGKoUDZHEEMAgG&#10;BiqFA2RxBTAIBgYqhQNkcQYwHQYDVR0OBBYEFB1Iacp18c1KccWyrbNYHhmTc0Ly&#10;MB8GA1UdIwQYMBaAFG2PXgXZX6yRF5QelZoFMDg3ehAqMFUGA1UdHwROMEwwSqBI&#10;oEaGRGh0dHA6Ly93d3cuY3J5cHRvcHJvLnJ1L0NlcnRFbnJvbGwvVGVzdCUyMENl&#10;bnRlciUyMENSWVBUTy1QUk8oMikuY3JsMIGgBggrBgEFBQcBAQSBkzCBkDAzBggr&#10;BgEFBQcwAYYnaHR0cDovL3d3dy5jcnlwdG9wcm8ucnUvb2NzcG5jL29jc3Auc3Jm&#10;MFkGCCsGAQUFBzAChk1odHRwOi8vd3d3LmNyeXB0b3Byby5ydS9DZXJ0RW5yb2xs&#10;L3BraS1zaXRlX1Rlc3QlMjBDZW50ZXIlMjBDUllQVE8tUFJPKDIpLmNydDAIBgYq&#10;hQMCAgMDQQAN/R7GwKALwybssbX1FnfHqZxvIxh13Pu2+iLgK/cRGQ9Ga9i8d6+0&#10;E4wUHty12HGB0ABPrQ43QmTGeNocDz/h&#10;-----END CERTIFICATE-----</textarea>
-                            </li>
-                            <li><textarea id="parse-cert-string-result" class="text-output" rows="7"></textarea></li>
-                        </ul>
-                    </div>
+                            <ul>
+                                <li>
+                                <label for="parse-cert-string-body">Cертификат в формате PEM:</label>
+                                <textarea id="parse-cert-string-body" class="text-input" rows="7">-----BEGIN CERTIFICATE-----&#10;MIIE9DCCBKOgAwIBAgIKGeFWzQACAAJYxzAIBgYqhQMCAgMwZTEgMB4GCSqGSIb3&#10;DQEJARYRaW5mb0BjcnlwdG9wcm8ucnUxCzAJBgNVBAYTAlJVMRMwEQYDVQQKEwpD&#10;UllQVE8tUFJPMR8wHQYDVQQDExZUZXN0IENlbnRlciBDUllQVE8tUFJPMB4XDTEy&#10;MDgxNjEyNDgxMFoXDTE0MTAwNDA3MDk0MVowggGKMQswCQYDVQQGEwJSVTEPMA0G&#10;A1UECBMGbW9zY293MREwDwYDVQQHEwhsb2NhbGl0eTEPMA0GA1UECRMGc3RyZWV0&#10;MQ4wDAYDVQQKEwVBa3RpdjELMAkGA1UECxMCSVQxGzAZBgNVBAweEgQ0BD4EOwQ2&#10;BD0EPgRBBEIETDEZMBcGCCqFAwOBAwEBEgsxMjM0MjM1MzQ1MjEWMBQGBSqFA2QD&#10;EgsxMjM0MjM1MzQ1MjEWMBQGBSqFA2QBEgsxMjM0MjM1MzQ1MjEWMBQGBSqFA2QF&#10;EgsxMjM0MjM1MzQ1MjEvMC0GA1UEAx4mBCQEMAQ8BDgEOwQ4BE8AIAQYBDwETwAg&#10;BB4ERwQ1BEEEQgQyBD4xFzAVBgNVBBATDnBvc3RhbCBhZGRyZXNzMRQwEgYDVQRB&#10;Ewtwc2V1ZG9ueW11czEQMA4GA1UEBBMHc3VybmFtZTETMBEGA1UEKhMKZ2l2ZW4g&#10;bmFtZTEiMCAGCSqGSIb3DQEJARYTZXhhbXBsZUBleGFtcGxlLmNvbTBjMBwGBiqF&#10;AwICEzASBgcqhQMCAiMBBgcqhQMCAh4BA0MABEC8dyMzXuEbYHV9NwCWZQmoWmon&#10;xJAfFTMtoKfuWWwhNg3ZuL36UP/zjTd33HolBNkRIC0FgtxpfQ+ES3l3J7PVo4IC&#10;CjCCAgYwDAYDVR0PBAUDAwf3gDB1BgNVHSUBAf8EazBpBggrBgEFBQcDBAYIKwYB&#10;BQUHAwIGCCsGAQUFBwMBBggrBgEFBQcDAwYIKwYBBQUHAwgGCisGAQQBgjcCARUG&#10;CisGAQQBgjcCARYGCisGAQQBgjcKAwEGCCsGAQUFBwMJBgcqhQMCAiIGMEUGA1Ud&#10;IAQ+MDwwCAYGKoUDZHEBMAgGBiqFA2RxAjAIBgYqhQNkcQMwCAYGKoUDZHEEMAgG&#10;BiqFA2RxBTAIBgYqhQNkcQYwHQYDVR0OBBYEFB1Iacp18c1KccWyrbNYHhmTc0Ly&#10;MB8GA1UdIwQYMBaAFG2PXgXZX6yRF5QelZoFMDg3ehAqMFUGA1UdHwROMEwwSqBI&#10;oEaGRGh0dHA6Ly93d3cuY3J5cHRvcHJvLnJ1L0NlcnRFbnJvbGwvVGVzdCUyMENl&#10;bnRlciUyMENSWVBUTy1QUk8oMikuY3JsMIGgBggrBgEFBQcBAQSBkzCBkDAzBggr&#10;BgEFBQcwAYYnaHR0cDovL3d3dy5jcnlwdG9wcm8ucnUvb2NzcG5jL29jc3Auc3Jm&#10;MFkGCCsGAQUFBzAChk1odHRwOi8vd3d3LmNyeXB0b3Byby5ydS9DZXJ0RW5yb2xs&#10;L3BraS1zaXRlX1Rlc3QlMjBDZW50ZXIlMjBDUllQVE8tUFJPKDIpLmNydDAIBgYq&#10;hQMCAgMDQQAN/R7GwKALwybssbX1FnfHqZxvIxh13Pu2+iLgK/cRGQ9Ga9i8d6+0&#10;E4wUHty12HGB0ABPrQ43QmTGeNocDz/h&#10;-----END CERTIFICATE-----</textarea>
+                                </li>
+                                <li><textarea id="parse-cert-string-result" class="text-output" rows="7"></textarea></li>
+                            </ul>
+                        </div>
                         <div id="GetKeyByCertificate" class="group"></div>
+                        <div id="GetCertificateInfo" class="group">
+                            <ul>
+                                <li>
+                                    <label for="cert-info-radio">Тип информации:</label><br>
+                                    <label><input class="radio-input" type="radio" name="certificate-info" value="serial number" checked="checked"/>Серийный номер</label>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="common">
+                            <dl>
+                                <dt><label for="system-store-cert-list">Сертификаты в хранилище: </label></dt>
+                                <dd>
+                                    <select id="system-store-cert-list">
+                                        <option>Обновите список сертификатов</option>
+                                    </select>
+                                    <button id="refresh-system-store-certs">↓↑</button>
+                                </dd>
+                            </dl>
+                        </div>
+
+                        <div id="GetStoreCertificate" class="group">
+                            <ul>
+                                <li><textarea id="get-store-cert-result" class="text-output" rows="7"></textarea></li>
+                            </ul>
+                        </div>
+
                     </div>
                     <div id="section-4">
                         <div id="SignMessage" class="group">
@@ -414,7 +465,6 @@
                                     <textarea id="sign-message" class="text-input" rows="7">Текст очень важного платежного документа</textarea>
                                 </li>
                                 <li>
-                                    
                                     <label for="sign-message-cms">Сформированный CMS (для добавления подписи). Должно быть пусто при формировании подписи данных</label>
                                     <textarea id="sign-message-cms" class="text-input" rows="7"></textarea>
                                 </li>
@@ -423,6 +473,13 @@
                                     <label><input type="checkbox" name="detached-sign" />Создавать отсоединенную подпись</label><br>
                                     <label><input type="checkbox" name="add-user-cert" checked="checked"/>Включать сертификат пользователя</label><br>
                                     <label><input type="checkbox" name="add-sign-time" id="add-sign-time" checked="checked"/>Добавить timestamp</label><br>
+                                    <label><input type="checkbox" name="rsa-hash" id="cms-rsa-hash"/>Алгоритм хэширования для RSA ключей</label>
+                                    <select class="hash-alg" id="cms-hash-alg" disabled=true>
+                                        <option value="HASH_TYPE_MD5">MD5</option>
+                                        <option value="HASH_TYPE_SHA1">SHA1</option>
+                                        <option value="HASH_TYPE_SHA256">SHA256</option>
+                                        <option value="HASH_TYPE_SHA512">SHA512</option>
+                                    </select><br>
                                     <label>Формат сообщения:</label>
                                     <select class="data-format">
                                         <option value="DATA_FORMAT_PLAIN">Строка</option>
@@ -652,8 +709,17 @@
                                     <textarea placeholder="Опционально - в случае если проверяется detached подпись" id="data" class="text-input" rows="7"></textarea>
                                 </li>
                                 <li>
-                                    <label for="cert">Сертификат</label>
-                                    <textarea placeholder="Опционально - в случае если он не включен в cms" id="cert" class="text-input"></textarea>
+                                    <table id="Certificates" class="inlineblock">
+                                        <tr>
+                                            <td colspan="2">
+                                                <label for="cert">Сертификат</label>
+                                                <textarea placeholder="Опционально - в случае если он не включен в cms" id="cert" class="verify-signer"></textarea>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="2"><button id="verify-add-signer" class="example">Добавить еще</button></td>
+                                        </tr>
+                                    </table>
                                 </li>
                                 <li>
                                     <label for="ca-cert">СА</label>
@@ -687,7 +753,15 @@
                                     <textarea id="encrypt-message" class="text-input" rows="7">Зашифруй меня полностью</textarea>
                                 </li>
                                 <li>
-                                    <label><input type="checkbox" name="in-base64"/>Данные в base64</label>
+                                    <label><input type="checkbox" name="in-base64"/>Данные в base64</label><br>
+                                    <label><input type="checkbox" name="cms-encrypt-cipher" id="cms-encrypt-cipher"/>Алгоритм шифрования для RSA ключей</label>
+                                    <select class="cms-encrypt-alg" id="cms-encrypt-alg" disabled=true>
+                                        <option value="CIPHER_ALGORITHM_DES">DES</option>
+                                        <option value="CIPHER_ALGORITHM_3DES">3DES</option>
+                                        <option value="CIPHER_ALGORITHM_AES128">AES128</option>
+                                        <option value="CIPHER_ALGORITHM_AES192">AES192</option>
+                                        <option value="CIPHER_ALGORITHM_AES256">AES256</option>
+                                    <select>
                                 </li>
                                 <li>
                                     <textarea id="encrypt-message-result" class="text-output" rows="7"></textarea>
